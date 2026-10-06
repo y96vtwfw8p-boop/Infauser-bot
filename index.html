@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>infauserbot</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0b0f0e;
+    color: #e8f5ef;
+}
+
+.container {
+    width: min(900px, 94%);
+    margin: 0 auto;
+    padding: 35px 0 60px;
+}
+
+.logo {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.logo span {
+    color: #35d49a;
+}
+
+.subtitle {
+    text-align: center;
+    color: #8b9b94;
+    margin-bottom: 30px;
+}
+
+.search-box {
+    background: #141b18;
+    border: 1px solid #26332e;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.25);
+}
+
+input {
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #304039;
+    background: #0d1311;
+    color: white;
+    font-size: 17px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #35d49a;
+}
+
+button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 15px;
+    border: 0;
+    border-radius: 12px;
+    background: #35d49a;
+    color: #07100c;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #46e3a8;
+}
+
+button:active {
+    transform: scale(.99);
+}
+
+#results {
+    margin-top: 25px;
+}
+
+.info {
+    background: #141b18;
+    border: 1px solid #26332e;
+    border-radius: 15px;
+    padding: 18px;
+    margin-bottom: 14px;
+}
+
+.info h3 {
+    margin: 0 0 8px;
+}
+
+.info p {
+    margin: 0;
+    color: #9baaa4;
+    line-height: 1.5;
+}
+
+.result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    background: #141b18;
+    border: 1px solid #26332e;
+    border-radius: 15px;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+
+.result-left {
+    min-width: 0;
+}
+
+.result-title {
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.result-query {
+    color: #82918b;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+.open {
+    width: auto;
+    min-width: 90px;
+    margin: 0;
+    padding: 10px 14px;
+    font-size: 14px;
+    text-decoration: none;
+    text-align: center;
+    background: #20332b;
+    color: #5ee8b0;
+}
+
+.open:hover {
+    background: #294238;
+}
+
+.warning {
+    margin-top: 18px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #211d13;
+    border: 1px solid #4b4128;
+    color: #cbbd91;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .logo {
+        font-size: 30px;
+    }
+
+    .result {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .open {
+        width: 100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="logo">
+        infauser<span>bot</span>
+    </div>
+
+    <div class="subtitle">
+        Поиск публичной информации по номеру телефона
+    </div>
+
+    <div class="search-box">
+
+        <input
+            id="phone"
+            type="tel"
+            placeholder="+7 900 123-45-67"
+            autocomplete="off"
+        >
+
+        <button onclick="startSearch()">
+            🔎 Начать поиск
+        </button>
+
+    </div>
+
+    <div id="results" class="hidden"></div>
+
+</div>
+
+<script>
+
+function normalizePhone(phone) {
+
+    return phone
+        .replace(/[^\d+]/g, "")
+        .trim();
+
+}
+
+function makeFormats(phone) {
+
+    let digits = phone.replace(/\D/g, "");
+
+    let formats = [];
+
+    if (digits.length >= 10) {
+
+        formats.push(digits);
+        formats.push("+" + digits);
+        formats.push("+" + digits.slice(0, 1) + " " + digits.slice(1));
+
+    }
+
+    formats.push(phone);
+
+    return [...new Set(formats)];
+
+}
+
+function addResult(container, title, query) {
+
+    const encoded = encodeURIComponent('"' + query + '"');
+
+    const google =
+        "https://www.google.com/search?q=" + encoded;
+
+    const div = document.createElement("div");
+
+    div.className = "result";
+
+    div.innerHTML = `
+        <div class="result-left">
+            <div class="result-title">${title}</div>
+            <div class="result-query">${escapeHTML(query)}</div>
+        </div>
+
+        <a
+            class="open"
+            href="${google}"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            Открыть
+        </a>
+    `;
+
+    container.appendChild(div);
+
+}
+
+function escapeHTML(text) {
+
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+function startSearch() {
+
+    const input = document.getElementById("phone");
+    const results = document.getElementById("results");
+
+    const phone = normalizePhone(input.value);
+
+    if (!phone) {
+
+        alert("Введите номер телефона.");
+
+        return;
+
+    }
+
+    results.innerHTML = "";
+    results.classList.remove("hidden");
+
+    const formats = makeFormats(phone);
+
+    const info = document.createElement("div");
+
+    info.className = "info";
+
+    info.innerHTML = `
+        <h3>📱 Номер</h3>
+        <p>${escapeHTML(phone)}</p>
+    `;
+
+    results.appendChild(info);
+
+    /*
+       Основные публичные категории поиска.
+       Они открываются в поисковике, а найденные
+       страницы пользователь просматривает самостоятельно.
+    */
+
+    formats.forEach((number, index) => {
+
+        addResult(
+            results,
+            "🌐 Публичные упоминания",
+            number
+        );
+
+    });
+
+    addResult(
+        results,
+        "📢 Публичные объявления",
+        phone + " объявление"
+    );
+
+    addResult(
+        results,
+        "🏢 Компании и организации",
+        phone + " компания"
+    );
+
+    addResult(
+        results,
+        "🛒 Магазины и услуги",
+        phone + " магазин OR услуга"
+    );
+
+    addResult(
+        results,
+        "💼 Работа и вакансии",
+        phone + " работа OR вакансия"
+    );
+
+    addResult(
+        results,
+        "📄 Публичные документы",
+        phone + " файл OR документ"
+    );
+
+    addResult(
+        results,
+        "🌍 Другие сайты",
+        phone
+    );
+
+    const warning = document.createElement("div");
+
+    warning.className = "warning";
+
+    warning.innerHTML = `
+        <b>Важно:</b> результаты зависят от того, что владелец
+        номера сам или организация публично разместили в интернете.
+        Сервис не обращается к закрытым базам, утечкам данных
+        или приватной информации.
+    `;
+
+    results.appendChild(warning);
+
+}
+
+document.getElementById("phone").addEventListener("keydown", function(event) {
+
+    if (event.key === "Enter") {
+
+        startSearch();
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
